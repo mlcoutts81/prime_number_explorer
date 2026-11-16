@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Number Explorer - BGE Level 1-2</title>
+    <!-- Tailwind CSS for responsive layout and clean typography -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for cheerful, accessible educational sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Fredoka for playful, readable numbers & Inter for clean UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 50%, #fef9c3 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .font-playful {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* 3D Tactile Button Styles */
+        .btn-tactile {
+            transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+        }
+        .btn-tactile:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        /* Pop-in animation for milestone banner */
+        @keyframes starPop {
+            0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }
+            60% { transform: scale(1.12) rotate(3deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .animate-star-pop {
+            animation: starPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Shake animation for wrong answer */
+        @keyframes gentleShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: gentleShake 0.4s ease-in-out;
+        }
+
+        /* Float animation for hero number */
+        @keyframes gentleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-float {
+            animation: gentleFloat 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-800 p-3 sm:p-6 flex flex-col items-center">
+
+    <!-- Milestone Flash Banner ("Prime number star. Keep going!") -->
+    <div id="milestone-banner" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 pointer-events-none">
+        <div class="animate-star-pop bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 border-4 border-white rounded-3xl p-6 sm:p-8 shadow-2xl text-center max-w-md w-full">
+            <div class="text-6xl mb-3">🌟🏆🌟</div>
+            <h2 class="font-playful text-3xl sm:text-4xl font-bold text-slate-900 drop-shadow-sm">
+                Prime number star. Keep going!
+            </h2>
+            <p class="mt-2 text-slate-800 font-semibold text-base sm:text-lg">
+                You reached 50 points! Amazing number detective work!
+            </p>
+        </div>
+    </div>
+
+    <!-- Header & EdTech Coach Pedagogical Note -->
+    <header class="w-full max-w-5xl mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white/90 backdrop-blur rounded-2xl p-4 shadow-md border border-sky-100">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🔢</span>
+                <h1 class="font-playful text-2xl sm:text-3xl font-bold text-sky-700">Prime Number Explorer</h1>
+                <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">BGE Level 1–2</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-600 mt-1">
+                <strong>EdTech Coach Tip:</strong> A prime number is greater than 1 and can only be divided equally by <strong>1</strong> and <strong>itself</strong> (e.g., 2, 3, 5, 7, 11).
+            </p>
+        </div>
+
+        <!-- Time Prediction Badge for 50 Points -->
+        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-center gap-3 shrink-0">
+            <div class="text-2xl">⏱️</div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-indigo-600">50-Point Prediction</div>
+                <div id="prediction-text" class="text-sm font-bold text-slate-800">~25–40 secs (5–7 questions)</div>
+                <div id="pace-subtext" class="text-xs text-slate-500">Avg BGE pace: ~5s per number</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Two-Column Responsive Layout: Game Arena (Left) + Live Spreadsheet (Right) -->
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        <!-- LEFT COLUMN: Interactive Game Area (7 cols on large screens) -->
+        <section class="lg:col-span-7 bg-white rounded-3xl shadow-xl border-2 border-sky-100 p-5 sm:p-6 flex flex-col justify-between">
+            
+            <!-- Top Bar: Player Name, Score, Lives -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <!-- Randomised Player Identity -->
+                <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-2 rounded-2xl">
+                    <span class="text-xl" id="player-emoji">🦊</span>
+                    <div>
+                        <div class="text-[10px] font-bold uppercase text-amber-700 tracking-wider">Player Name</div>
+                        <div class="flex items-center gap-1.5">
+                            <span id="player-name" class="font-playful font-bold text-slate-800 text-base sm:text-lg">Fox, Hexagon</span>
+                            <button onclick="rerollPlayerName()" title="New Random Player Name" class="text-xs bg-amber-200 hover:bg-amber-300 text-amber-900 px-2 py-0.5 rounded-lg font-semibold transition cursor-pointer">
+                                🎲 New
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score & Lives Counters -->
+                <div class="flex items-center gap-3">
+                    <!-- Score -->
+                    <div class="bg-sky-50 border border-sky-200 px-4 py-2 rounded-2xl text-center">
+                        <div class="text-[10px] font-bold uppercase text-sky-600 tracking-wider">Score</div>
+                        <div id="score-display" class="font-playful text-2xl font-bold text-sky-700">0</div>
+                    </div>
+
+                    <!-- Lives -->
+                    <div class="bg-rose-50 border border-rose-200 px-4 py-2 rounded-2xl text-center">
+                        <div class="text-[10px] font-bold uppercase text-rose-600 tracking-wider">Lives</div>
+                        <div id="lives-display" class="text-xl tracking-widest mt-0.5" aria-label="3 lives remaining">❤️❤️❤️</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Gameplay Stage -->
+            <div id="game-stage" class="my-6 flex flex-col items-center text-center">
+                <span class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Is this number a Prime Number?</span>
+                
+                <!-- Target Number Card -->
+                <div id="number-card" class="animate-float w-36 h-36 sm:w-44 sm:h-44 rounded-3xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex flex-col items-center justify-center shadow-lg border-4 border-sky-200 mb-4 select-none">
+                    <span id="current-number" class="font-playful text-6xl sm:text-7xl font-bold">7</span>
+                </div>
+
+                <!-- Visual Array / Grouping Helper (Supports BGE Level 1-2 Concrete-Pictorial-Abstract) -->
+                <div class="w-full max-w-md bg-slate-50 rounded-2xl p-3 border border-slate-200 min-h-[76px] flex flex-col items-center justify-center">
+                    <div class="flex items-center justify-between w-full mb-1.5 px-1">
+                        <span class="text-xs font-semibold text-slate-500">Visual Counter Helper:</span>
+                        <button onclick="toggleVisualHelper()" id="helper-toggle-btn" class="text-xs font-bold text-sky-600 hover:underline cursor-pointer">
+                            Hide Dots
+                        </button>
+                    </div>
+                    <div id="dots-container" class="flex flex-wrap justify-center gap-1.5 max-w-xs">
+                        <!-- Dots generated via JS -->
+                    </div>
+                </div>
+
+                <!-- Feedback Toast Area -->
+                <div id="feedback-box" class="mt-4 min-h-[48px] flex items-center justify-center w-full">
+                    <p id="feedback-text" class="text-sm sm:text-base font-semibold text-slate-600">
+                        Tap <strong>Prime</strong> (+10 pts) or <strong>Not Prime</strong> (-5 pts & 1 life if wrong).
+                    </p>
+                </div>
+            </div>
+
+            <!-- Game Over Screen (Hidden during active play) -->
+            <div id="gameover-stage" class="hidden my-6 py-6 px-4 bg-rose-50 border-2 border-rose-200 rounded-3xl text-center">
+                <div class="text-5xl mb-2">💫</div>
+                <h2 class="font-playful text-3xl font-bold text-rose-700">Game Over!</h2>
+                <p id="gameover-summary" class="text-slate-700 font-medium mt-2">
+                    Great effort! Your score has been saved to the class spreadsheet.
+                </p>
+                <div class="mt-5 flex flex-wrap justify-center gap-3">
+                    <button onclick="startNewGame(false)" class="btn-tactile bg-sky-500 hover:bg-sky-600 text-white font-playful font-bold text-lg px-6 py-3 rounded-2xl cursor-pointer">
+                        🔄 Play Again (Same Name)
+                    </button>
+                    <button onclick="startNewGame(true)" class="btn-tactile bg-amber-400 hover:bg-amber-500 text-slate-900 font-playful font-bold text-lg px-6 py-3 rounded-2xl cursor-pointer">
+                        🎲 New Player & Play
+                    </button>
+                </div>
+            </div>
+
+            <!-- Action Buttons OUTSIDE the visual stage -->
+            <div id="controls-row" class="grid grid-cols-2 gap-4 pt-2">
+                <button id="btn-prime" onclick="submitAnswer(true)" class="btn-tactile bg-emerald-500 hover:bg-emerald-600 text-white font-playful font-bold text-xl sm:text-2xl py-4 px-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer">
+                    <span>✅ PRIME</span>
+                    <span class="text-xs font-sans font-normal opacity-90 mt-0.5">Only divides by 1 & itself</span>
+                </button>
+
+                <button id="btn-not-prime" onclick="submitAnswer(false)" class="btn-tactile bg-rose-500 hover:bg-rose-600 text-white font-playful font-bold text-xl sm:text-2xl py-4 px-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer">
+                    <span>❌ NOT PRIME</span>
+                    <span class="text-xs font-sans font-normal opacity-90 mt-0.5">Has other factors (or is 1)</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: Class Score Tracker Spreadsheet (5 cols on large screens) -->
+        <aside class="lg:col-span-5 bg-white rounded-3xl shadow-xl border-2 border-emerald-100 p-5 flex flex-col">
+            <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-200">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📊</span>
+                    <div>
+                        <h2 class="font-playful text-xl font-bold text-slate-800">Class Score Spreadsheet</h2>
+                        <p class="text-xs text-slate-500">Live tracker • Recipe: <em>[Animal], [Shape]</em></p>
+                    </div>
+                </div>
+                <button onclick="exportSpreadsheetCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition flex items-center gap-1 cursor-pointer" title="Download CSV for Excel or Google Sheets">
+                    📥 Export CSV
+                </button>
+            </div>
+
+            <!-- Spreadsheet Grid Container -->
+            <div class="mt-3 overflow-x-auto rounded-xl border border-slate-300 shadow-inner bg-slate-50 max-h-[410px] overflow-y-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead class="bg-slate-200 text-slate-700 sticky top-0 z-10 font-mono text-xs uppercase">
+                        <tr>
+                            <th class="border-b border-r border-slate-300 py-2 px-2.5 w-10 text-center bg-slate-200">#</th>
+                            <th class="border-b border-r border-slate-300 py-2 px-3 bg-slate-200">Player Name (A)</th>
+                            <th class="border-b border-r border-slate-300 py-2 px-3 text-right bg-slate-200">Score (B)</th>
+                            <th class="border-b border-slate-300 py-2 px-2.5 text-center bg-slate-200">50pt Star (C)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spreadsheet-body" class="divide-y divide-slate-200 bg-white font-medium">
+                        <!-- Rows populated dynamically by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Spreadsheet Footer Info & Clear Button -->
+            <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
+                <span id="time-elapsed-label">Session Time: 0s</span>
+                <button onclick="resetSpreadsheet()" class="text-rose-600 hover:underline font-semibold cursor-pointer">
+                    Clear Sheet
+                </button>
+            </div>
+        </aside>
+
+    </main>
+
+    <script>
+        /**
+         * ============================================================================
+         * PRIME NUMBER EXPLORER (BGE LEVEL 1-2)
+         * Built for Scottish Curriculum for Excellence (BGE Level 1-2 Numeracy)
+         * ============================================================================
+         */
+
+        // --- 1. RANDOM PLAYER NAME GENERATOR RECIPE: "[Animal], [Shape]" ---
+        const ANIMALS = [
+            { name: "Badger", emoji: "🦡" },
+            { name: "Otter", emoji: "🦦" },
+            { name: "Fox", emoji: "🦊" },
+            { name: "Puffin", emoji: "🐧" },
+            { name: "Hedgehog", emoji: "🦔" },
+            { name: "Squirrel", emoji: "🐿️" },
+            { name: "Dolphin", emoji: "🐬" },
+            { name: "Owl", emoji: "🦉" },
+            { name: "Rabbit", emoji: "🐇" },
+            { name: "Seal", emoji: "🦭" },
+            { name: "Deer", emoji: "🦌" },
+            { name: "Robin", emoji: "🐦" }
+        ];
+
+        const SHAPES = [
+            "Circle", "Square", "Triangle", "Hexagon", "Pentagon",
+            "Star", "Diamond", "Octagon", "Oval", "Cube", "Sphere", "Cylinder"
+        ];
+
+        // --- 2. BGE LEVEL 1-2 NUMBER POOL (1 to 30) ---
+        // Carefully selected for BGE Level 1-2 learners so they can mentally check
+        // divisibility by 2, 3, and 5, plus learn that 1 is NOT prime and 2 IS prime.
+        const BGE_NUMBER_POOL = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+            11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+            21, 23, 24, 25, 27, 29, 30
+        ];
+
+        // --- 3. GAME STATE ---
+        let state = {
+            playerName: "",
+            playerEmoji: "🦊",
+            score: 0,
+            lives: 3,
+            currentNumber: 7,
+            previousNumber: null,
+            isGameOver: false,
+            reachedFiftyStar: false,
+            showVisualDots: true,
+            startTime: Date.now(),
+            questionsAnswered: 0,
+            sessionId: null
+        };
+
+        // Spreadsheet records stored in memory (and synced to localStorage safely)
+        let spreadsheetRows = [];
+        let timerInterval = null;
+
+        // --- 4. SOUND SYNTHESIS (Tone.js - No external audio URLs needed) ---
+        let synth = null;
+        function playSound(type) {
+            try {
+                if (!synth && typeof Tone !== "undefined") {
+                    synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    synth.volume.value = -8;
+                }
+                if (!synth) return;
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+
+                const now = Tone.now();
+                if (type === "correct") {
+                    synth.triggerAttackRelease(["C5", "E5", "G5"], "16n", now);
+                } else if (type === "wrong") {
+                    synth.triggerAttackRelease(["E3", "Eb3"], "8n", now);
+                } else if (type === "milestone") {
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("E5", "16n", now + 0.1);
+                    synth.triggerAttackRelease("G5", "16n", now + 0.2);
+                    synth.triggerAttackRelease("C6", "4n", now + 0.3);
+                } else if (type === "gameover") {
+                    synth.triggerAttackRelease("G4", "8n", now);
+                    synth.triggerAttackRelease("E4", "8n", now + 0.18);
+                    synth.triggerAttackRelease("C4", "4n", now + 0.36);
+                }
+            } catch (err) {
+                // Gracefully ignore audio errors if browser blocks autoplay
+            }
+        }
+
+        // --- 5. MATHEMATICAL LOGIC & EXPLANATIONS ---
+        function isPrime(num) {
+            if (num <= 1) return false;
+            if (num === 2) return true;
+            if (num % 2 === 0) return false;
+            for (let i = 3; i <= Math.sqrt(num); i += 2) {
+                if (num % i === 0) return false;
+            }
+            return true;
+        }
+
+        function getExplanation(num) {
+            if (num === 1) return "1 is NOT prime because a prime number must have two different factors (1 and itself).";
+            if (num === 2) return "2 IS prime! It is the only even prime number (1 × 2 = 2).";
+            if (isPrime(num)) {
+                return `${num} IS prime! Only 1 × ${num} makes ${num}.`;
+            } else {
+                // Find a helpful factor pair for BGE learners
+                for (let f = 2; f <= Math.sqrt(num); f++) {
+                    if (num % f === 0) {
+                        return `${num} is NOT prime because ${f} × ${num / f} = ${num}.`;
+                    }
+                }
+                return `${num} is NOT prime.`;
+            }
+        }
+
+        // --- 6. PLAYER IDENTITY ("[Animal], [Shape]") ---
+        function generateRandomPlayer() {
+            const animalObj = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+            const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+            return {
+                fullName: `${animalObj.name}, ${shape}`,
+                emoji: animalObj.emoji
+            };
+        }
+
+        function rerollPlayerName() {
+            const newPlayer = generateRandomPlayer();
+            state.playerName = newPlayer.fullName;
+            state.playerEmoji = newPlayer.emoji;
+            document.getElementById("player-name").textContent = state.playerName;
+            document.getElementById("player-emoji").textContent = state.playerEmoji;
+            syncCurrentRowToSpreadsheet();
+        }
+
+        // --- 7. TIME PREDICTION ENGINE TO REACH 50 POINTS ---
+        function updateTimePrediction() {
+            const predictionEl = document.getElementById("prediction-text");
+            const subtextEl = document.getElementById("pace-subtext");
+
+            const pointsNeeded = Math.max(0, 50 - state.score);
+
+            if (state.score >= 50) {
+                const totalSecs = Math.max(1, Math.round((Date.now() - state.startTime) / 1000));
+                predictionEl.textContent = `Goal Reached in ${totalSecs}s!`;
+                subtextEl.textContent = "50+ points unlocked!";
+                return;
+            }
+
+            const questionsRemaining = Math.ceil(pointsNeeded / 10);
+            const elapsedSeconds = (Date.now() - state.startTime) / 1000;
+
+            // Default BGE Level 1-2 estimate: ~5.5 seconds per question (27.5s for 5 questions)
+            let avgSecondsPerQuestion = 5.5;
+            if (state.questionsAnswered >= 2) {
+                avgSecondsPerQuestion = Math.max(2, Math.min(12, elapsedSeconds / state.questionsAnswered));
+            }
+
+            const estimatedSeconds = Math.round(questionsRemaining * avgSecondsPerQuestion);
+            predictionEl.textContent = `~${estimatedSeconds}s left (${questionsRemaining} more right)`;
+            subtextEl.textContent = state.questionsAnswered >= 2
+                ? `Your live pace: ${avgSecondsPerQuestion.toFixed(1)}s / question`
+                : `BGE Level 1–2 estimate: ~25–35s total`;
+        }
+
+        // --- 8. VISUAL DOT ARRAY HELPER ---
+        function renderVisualDots(num) {
+            const container = document.getElementById("dots-container");
+            container.innerHTML = "";
+
+            if (!state.showVisualDots) {
+                container.innerHTML = `<span class="text-xs italic text-slate-400">Dots hidden — mental maths mode!</span>`;
+                return;
+            }
+
+            for (let i = 0; i < num; i++) {
+                const dot = document.createElement("span");
+                dot.className = "w-3.5 h-3.5 rounded-full bg-indigo-500 inline-block shadow-sm";
+                container.appendChild(dot);
+            }
+        }
+
+        function toggleVisualHelper() {
+            state.showVisualDots = !state.showVisualDots;
+            document.getElementById("helper-toggle-btn").textContent = state.showVisualDots ? "Hide Dots" : "Show Dots";
+            renderVisualDots(state.currentNumber);
+        }
+
+        // --- 9. CORE GAMEPLAY LOOP ---
+        function pickNextNumber() {
+            let candidate;
+            do {
+                candidate = BGE_NUMBER_POOL[Math.floor(Math.random() * BGE_NUMBER_POOL.length)];
+            } while (candidate === state.previousNumber);
+
+            state.previousNumber = candidate;
+            state.currentNumber = candidate;
+            document.getElementById("current-number").textContent = candidate;
+            renderVisualDots(candidate);
+        }
+
+        function triggerMilestoneFlash() {
+            const banner = document.getElementById("milestone-banner");
+            banner.classList.remove("hidden");
+            playSound("milestone");
+
+            setTimeout(() => {
+                banner.classList.add("hidden");
+            }, 2800);
+        }
+
+        function submitAnswer(userGuessedPrime) {
+            if (state.isGameOver) return;
+
+            const actualPrime = isPrime(state.currentNumber);
+            const explanation = getExplanation(state.currentNumber);
+            const feedbackEl = document.getElementById("feedback-text");
+            const numberCard = document.getElementById("number-card");
+
+            state.questionsAnswered++;
+
+            if (userGuessedPrime === actualPrime) {
+                // CORRECT: +10 points
+                state.score += 10;
+                playSound("correct");
+
+                feedbackEl.innerHTML = `<span class="text-emerald-700 font-bold">✅ +10 pts!</span> <span class="text-slate-700">${explanation}</span>`;
+
+                // Check if learner just reached 50 points for the first time this game
+                if (state.score >= 50 && !state.reachedFiftyStar) {
+                    state.reachedFiftyStar = true;
+                    triggerMilestoneFlash();
+                }
+            } else {
+                // WRONG: -5 points and lose 1 life
+                state.score = Math.max(0, state.score - 5);
+                state.lives -= 1;
+                playSound("wrong");
+
+                // Shake card for clear visual cue
+                numberCard.classList.remove("animate-shake");
+                void numberCard.offsetWidth; // trigger reflow
+                numberCard.classList.add("animate-shake");
+
+                feedbackEl.innerHTML = `<span class="text-rose-700 font-bold">❌ -5 pts & -1 Life!</span> <span class="text-slate-700">${explanation}</span>`;
+            }
+
+            updateHUD();
+            syncCurrentRowToSpreadsheet();
+            updateTimePrediction();
+
+            if (state.lives <= 0) {
+                endGame();
+            } else {
+                pickNextNumber();
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById("score-display").textContent = state.score;
+
+            const hearts = "❤️".repeat(Math.max(0, state.lives)) + "🖤".repeat(Math.max(0, 3 - state.lives));
+            document.getElementById("lives-display").textContent = hearts;
+        }
+
+        function endGame() {
+            state.isGameOver = true;
+            playSound("gameover");
+
+            document.getElementById("game-stage").classList.add("hidden");
+            document.getElementById("controls-row").classList.add("hidden");
+            document.getElementById("gameover-stage").classList.remove("hidden");
+
+            document.getElementById("gameover-summary").innerHTML =
+                `<strong>${state.playerName}</strong> finished with <strong>${state.score} points</strong>! Your result is recorded in the Class Score Spreadsheet.`;
+        }
+
+        function startNewGame(generateNewPlayer) {
+            if (generateNewPlayer || !state.playerName) {
+                const p = generateRandomPlayer();
+                state.playerName = p.fullName;
+                state.playerEmoji = p.emoji;
+            }
+
+            state.score = 0;
+            state.lives = 3;
+            state.isGameOver = false;
+            state.reachedFiftyStar = false;
+            state.startTime = Date.now();
+            state.questionsAnswered = 0;
+            state.sessionId = Date.now() + "-" + Math.random().toString(36).substring(2, 6);
+
+            document.getElementById("player-name").textContent = state.playerName;
+            document.getElementById("player-emoji").textContent = state.playerEmoji;
+            document.getElementById("feedback-text").innerHTML =
+                `Tap <strong>Prime</strong> (+10 pts) or <strong>Not Prime</strong> (-5 pts & 1 life if wrong).`;
+
+            document.getElementById("gameover-stage").classList.add("hidden");
+            document.getElementById("game-stage").classList.remove("hidden");
+            document.getElementById("controls-row").classList.remove("hidden");
+
+            // Create new row at top of spreadsheet
+            spreadsheetRows.unshift({
+                id: state.sessionId,
+                playerName: state.playerName,
+                score: 0,
+                starReached: false,
+                status: "Playing"
+            });
+
+            updateHUD();
+            pickNextNumber();
+            renderSpreadsheet();
+            updateTimePrediction();
+        }
+
+        // --- 10. SPREADSHEET MANAGEMENT & CSV EXPORT ---
+        function loadSavedSpreadsheet() {
+            try {
+                const raw = localStorage.getItem("bge_prime_spreadsheet_v1");
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        spreadsheetRows = parsed;
+                    }
+                }
+            } catch (e) {
+                spreadsheetRows = [];
+            }
+        }
+
+        function saveSpreadsheet() {
+            try {
+                localStorage.setItem("bge_prime_spreadsheet_v1", JSON.stringify(spreadsheetRows.slice(0, 50)));
+            } catch (e) {
+                // Ignore storage quota errors
+            }
+        }
+
+        function syncCurrentRowToSpreadsheet() {
+            const idx = spreadsheetRows.findIndex(r => r.id === state.sessionId);
+            if (idx !== -1) {
+                spreadsheetRows[idx].playerName = state.playerName;
+                spreadsheetRows[idx].score = state.score;
+                spreadsheetRows[idx].starReached = state.reachedFiftyStar;
+                spreadsheetRows[idx].status = state.lives <= 0 ? "Finished" : "Playing";
+            }
+            saveSpreadsheet();
+            renderSpreadsheet();
+        }
+
+        function renderSpreadsheet() {
+            const tbody = document.getElementById("spreadsheet-body");
+            tbody.innerHTML = "";
+
+            spreadsheetRows.forEach((row, index) => {
+                const isCurrent = row.id === state.sessionId;
+                const tr = document.createElement("tr");
+                tr.className = isCurrent ? "bg-sky-50/90 font-semibold" : "hover:bg-slate-50";
+
+                tr.innerHTML = `
+                    <td class="border-r border-slate-200 py-2 px-2.5 text-center font-mono text-xs text-slate-500 bg-slate-100/70">
+                        ${index + 1}
+                    </td>
+                    <td class="border-r border-slate-200 py-2 px-3 text-slate-800">
+                        ${escapeHtml(row.playerName)}
+                        ${isCurrent ? '<span class="ml-1.5 text-[10px] bg-sky-200 text-sky-900 px-1.5 py-0.5 rounded font-bold">YOU</span>' : ''}
+                    </td>
+                    <td class="border-r border-slate-200 py-2 px-3 text-right font-mono font-bold ${row.score >= 50 ? 'text-emerald-600' : 'text-slate-800'}">
+                        ${row.score}
+                    </td>
+                    <td class="py-2 px-2.5 text-center">
+                        ${row.starReached ? '🌟 Yes' : '—'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function exportSpreadsheetCSV() {
+            let csvContent = "Row,Player Name,Score,50pt Prime Star\n";
+            spreadsheetRows.forEach((row, idx) => {
+                const safeName = `"${row.playerName.replace(/"/g, '""')}"`;
+                csvContent += `${idx + 1},${safeName},${row.score},${row.starReached ? "Yes" : "No"}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "BGE_Prime_Number_Scores.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function resetSpreadsheet() {
+            spreadsheetRows = [];
+            saveSpreadsheet();
+            startNewGame(false);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // --- 11. KEYBOARD ACCESSIBILITY & LIVE SESSION TIMER ---
+        document.addEventListener("keydown", (e) => {
+            if (state.isGameOver) return;
+            if (e.key === "ArrowLeft" || e.key.toLowerCase() === "p") {
+                submitAnswer(true);
+            } else if (e.key === "ArrowRight" || e.key.toLowerCase() === "n") {
+                submitAnswer(false);
+            }
+        });
+
+        window.onload = function () {
+            loadSavedSpreadsheet();
+            startNewGame(true);
+
+            timerInterval = setInterval(() => {
+                if (!state.isGameOver) {
+                    const secs = Math.floor((Date.now() - state.startTime) / 1000);
+                    document.getElementById("time-elapsed-label").textContent = `Session Time: ${secs}s`;
+                    updateTimePrediction();
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
